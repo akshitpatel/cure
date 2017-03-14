@@ -56,9 +56,9 @@ function empty(data)
 
 function isDebug()
 {
-	//on/off
+	//on/off	
 	//return true;
-	return true;
+	return false;
 }
 
 function hasConnection()
@@ -100,6 +100,15 @@ document.addEventListener("deviceready", function() {
 	    push.on('notification', function(data) {	
 	     	 //alert(JSON.stringify(data));
 	     	 //switch (data.additionalData.additionalData.push_type)
+	     	 
+	     	 var vibrate_interval=getStorage("device_vibration");
+	     	 if (empty(vibrate_interval)){
+	     	 	vibrate_interval=3000;
+	     	 } 
+	     	 
+	     	 vibrate_interval=parseInt(vibrate_interval)+1;	
+	     	 navigator.vibrate(vibrate_interval);	     	 
+	     	 
 	     	 if ( data.additionalData.foreground ){
 	     	  	 //when the app is active
 	     	  	 setBaloon();
@@ -292,6 +301,15 @@ document.addEventListener("show", function(event) {
 		case "home":	
 		    checkGPS();	
 		break;	
+		
+		case "photoPage":			
+		  callAjax('getTaskPhoto', 'task_id='+$(".task_id_global").val() );
+		break;
+		
+		case "Signature":
+		    callAjax('loadSignature', 'task_id='+$(".task_id_global").val() );
+		break;
+		
 	}	
 }, false);
 
@@ -377,6 +395,18 @@ document.addEventListener("init", function(event) {
 			break;
 			
 			case "SettingPage":			
+			
+			if (isDebug()){
+		    	$(".software_version").html( "1.0" );
+		    } else {
+		    	$(".software_version").html( BuildInfo.version );
+		    }
+		    
+		    device_id=getStorage('device_id');
+   			if (!empty(device_id)){
+   			  	$('.device_id').html( device_id );
+   			}
+			
 			callAjax("GetSettings",'');
 			TransLatePage();
 			break;
@@ -487,8 +517,9 @@ document.addEventListener("init", function(event) {
 			      }
 			      pullHook.innerHTML = message;
 			 });
-			 
+			 			 
 			 break;					 			 
+			 			 			 
 			 	 
 	 } /*end switch*/
 	 		 
@@ -615,6 +646,7 @@ function callAjax(action,params)
 		   			setStorage("kr_token", data.details.token);
 		   			
 		   			setStorage("kr_location_accuracy", data.details.location_accuracy);
+		   			setStorage("device_vibration", data.details.device_vibration);		   			
 		   			
 					kNavigator.pushPage("home.html", {
 					  animation: 'slide',
@@ -653,10 +685,13 @@ function callAjax(action,params)
 		   			$(".toolbar-title").html ( data.msg ) ;
 		   			$("#task-details").html( 
 		   			   formatTaskDetails(data.details) + 
-		   			   TaskDetailsChevron_1(data.details)  + 
-		   			   TaskDetailsChevron_2(data.details) +
-		   			   //OrderDetails(data.details) +
-		   			   TaskAddSignature( data.details ) +
+		   			   TaskDetailsChevron_1(data.details)  +  // delivery address
+		   			   DroffDetails( data.details ) +       // dropoff details
+		   			   TaskDetailsChevron_2(data.details) +  // task description
+		   			   //OrderDetails(data.details) +		   			   
+		   			   TaskAddSignature( data.details ) +   // task signatore
+		   			   DriverNotes( data.history_notes , data.details ) +	// driver notes	   			   
+		   			   addPhotoChevron(data.details) +  // take picture
 		   			   TaskDetailsChevron_3(data.details.history)
 		   			);
 		   			
@@ -665,6 +700,8 @@ function callAjax(action,params)
 		   			$("#task-action-wrap").html( 
 		   			  swicthButtonAction( data.details.task_id, data.details.status_raw )
 		   			);
+		   			
+		   			$(".task_id_global").val( data.details.task_id );
 		   					   					   			
 		   			break;
 		   			
@@ -713,6 +750,15 @@ function callAjax(action,params)
 		   			$(".transport_type_id").val( data.details.transport_type_id );
 		   			switchTransportFields( data.details.transport_type_id );
 		   			
+		   			if ( !empty(data.details.profile_photo)){
+		   				$(".profile-bg").css('background-image', 'url(' + data.details.profile_photo + ')');
+		   				$(".profile-bg").css("background-size","cover");
+		   				$(".avatar").attr("src", data.details.profile_photo );
+		   				imageLoaded('.img_loader');
+		   			} else {
+		   				imageLoaded('.img_loader');
+		   			}
+		   			
 		   			break;
 		   			
 		   			
@@ -738,11 +784,6 @@ function callAjax(action,params)
 		   			
 		   			case "GetSettings":
 		   			  
-		   			  device_id=getStorage('device_id');
-		   			  if (!empty(device_id)){
-		   			  	 $('.device_id').html( device_id );
-		   			  }
-		   			
 		   			  if ( data.details.enabled_push==1){
 		   			      enabled_push.checked=true;
 		   			  } else {
@@ -830,6 +871,62 @@ function callAjax(action,params)
 		   			removeStorage('kr_token');
 		   			break;
 		   			
+		   			case "addNotes":		   			
+		   			case "deleteNotes":		   			
+		   			  $(".notes_fields").val('');
+		   			  callAjax("loadNotes","task_id="+ data.details.task_id );		 
+		   			break;
+		   			
+		   			case "updateNotes":
+		   			  //toastMsg( data.msg );
+		   			  var dialog_notes = document.getElementById('editNotes');
+		   			  dialog_notes.hide();		   			  
+		   			  callAjax("loadNotes","task_id="+ data.details.task_id );		 
+		   			break;
+		   			
+		   			case "loadNotes":
+		   			  fillNotes(data);
+		   			break;
+		   			
+		   			case "getTaskPhoto":
+		   			  gridPhoto(data , data.msg);
+		   			break;
+		   			
+		   			case "loadSignature":
+		   			  if (data.details.status=="successful"){
+		   			  	 $(".toolbar-title-signature").html( getTrans("View Signature",'view_signature') );
+	  	 	             $(".signature-action").hide();
+	  	 	             if (!empty(data.details.data)){
+	  	 	             	
+	  	 	             	 signature_html='<div class="img_loaded" >';
+				  	 	     signature_html += '<img src="'+data.details.data.customer_signature_url+'" />';
+				  	 	     signature_html+='</div>';
+				  	 	   
+				  	 	     $("#signature-pan").html ( signature_html )  ;
+				  	 	   
+				  	 	     imageLoaded('.img_loaded');
+				  	 	     
+				  	 	     $(".receive_by").hide();
+	  	 	             }
+		   			  } else {
+		   			  	 $(".toolbar-title-signature").html( getTrans("Add Signature",'add_signature') );
+	  	 	             $(".signature-action").show();	
+	  	 	             $(".receive_by").show();  	 	               
+	  	 	             $sigdiv = $("#signature-pan") ;
+	  	 	             $sigdiv.jSignature();
+		   			     $(".receive_by").val( data.details.data.receive_by );
+		   			     if (!empty(data.details.data)){
+		   			     	 $(".signature_id").val( data.details.data.id );
+		   			     	 dump(data.details.data.signature_base30);		   			     	 
+	  	 	                 $sigdiv.jSignature("setData", "data:"+data.details.data.signature_base30 ) ;	  	 	                 
+		   			     }
+		   			  }
+		   			break;
+		   			
+		   			case "deletePhoto":
+		   			  callAjax('getTaskPhoto', 'task_id='+$(".task_id_global").val() );
+		   			break;
+		   			
 		   			default:
 		   			onsenAlert( data.msg );
 		   			break;
@@ -876,6 +973,20 @@ function callAjax(action,params)
 		   			  kNavigator.popPage().then(function() {
 		                 reloadHome();		    		   
 	                  });	   
+		   			break;
+		   			
+		   			case "loadNotes":
+		   			$("#list-notes").html('');
+		   			break;
+		   			
+		   			case "getTaskPhoto":
+		   			  $("#list-photos").html('');
+		   			break;
+		   				
+		   			case "loadSignature":
+		   			 $(".toolbar-title-signature").html( getTrans("Add Signature",'add_signature') );
+	  	 	         $(".signature-action").show();
+	  	 	         $("#signature-pan").jSignature();	
 		   			break;
 		   				
 		   			default:		   			
@@ -1275,7 +1386,8 @@ function ShowSignaturePage( task_id , signature , status )
 	kNavigator.pushPage("Signature.html", {
 	  animation: 'none',
 	  callback: function(){		 		
-	  	 $(".task_id_signature").val(  task_id );	  	 
+	  	$(".task_id_signature").val(  task_id );
+	  	/* 
 	  	 if ( status=="successful"){
 	  	 	$(".toolbar-title-signature").html( getTrans("View Signature",'view_signature') );
 	  	 	$(".signature-action").hide();
@@ -1293,7 +1405,7 @@ function ShowSignaturePage( task_id , signature , status )
 	  	 	$(".toolbar-title-signature").html( getTrans("Add Signature",'add_signature') );
 	  	 	$(".signature-action").show();
 	  	 	$("#signature-pan").jSignature();	  	
-	  	 }	  	 	  	 
+	  	 }	  	 	  	*/ 
 	  } 
    });
 }
@@ -1308,7 +1420,7 @@ function AddSignatureToTask()
 {
 	//var datapair = $("#signature-pan").jSignature("getData", "svgbase64");
 	var datapair = $("#signature-pan").jSignature("getData","base30");	
-	callAjax("AddSignatureToTask","image="+datapair +"&task_id=" + $(".task_id_signature").val() );
+	callAjax("AddSignatureToTask","image="+datapair +"&task_id=" + $(".task_id_signature").val() + "&receive_by="+ $(".receive_by").val()  + "&signature_id="+ $(".signature_id").val() );
 }
 
 function imageLoaded(div_id)
@@ -1601,8 +1713,10 @@ function viewTaskMap(task_id , task_lat, task_lng , delivery_address )
 	
 	 kNavigator.pushPage("Map.html", {
 		  animation: 'fade',
-		  callback: function(){		
-		  	 viewTaskMapInit();				  	  
+		  callback: function(){	
+		  	 if (!isDebug()){
+		  	    viewTaskMapInit();				  	  
+		  	 }
 		  } 
 	 });
 }
@@ -1639,6 +1753,10 @@ function viewTaskMapInit()
 	      'zoom': 17
 	     }
 	    });
+	    
+	    map.clear();
+		map.off();		
+			    
         map.setBackgroundColor('white');
         
         map.on(plugin.google.maps.event.MAP_READY, onMapInit); 
@@ -1650,7 +1768,7 @@ function onMapInit()
 {			
 	/*map.clear();
 	map.showDialog();*/
-	map.clear();	
+	//map.clear();	
 	var task_lat=getStorage('task_lat');
 	var task_lng=getStorage('task_lng');
 	var delivery_address=getStorage('delivery_address');
@@ -1863,4 +1981,636 @@ function getLocationAccuracy()
 		}
 	}
 	return false;
+}
+
+
+/*VERSION 1.1 STARTS HERE*/
+
+function showAddNote(task_id, status_raw )
+{	
+	kNavigator.pushPage("Notes.html", {
+	  animation: 'slide',
+	  callback: function(){		 					  	  
+	  	  dump('Notes');		  
+	  	  $(".task_id").val(task_id);
+	  	  
+	  	  if ( status_raw=="cancelled" || status_raw=="successful" || status_raw=="failed"){	  	  	  
+	  	  	  $(".add_notes_wrapper").hide();	  	
+	  	  	  $(".toolbar-title-notes").html( getTrans("View Notes",'view_notes') );  	  
+	  	  }
+	  	  
+	  	  callAjax("loadNotes","task_id="+task_id);
+	  } 
+   });
+}
+
+function addNotes()
+{
+	var params = $( ".frm-notes").serialize();	
+	params+="&task_id="+$(".task_id").val();	
+	callAjax("addNotes",params);
+}
+
+var showNotesPopover = function(element,id,notes) {   
+   $(".notes_id").val(id);
+   $(".notes_value").val(notes);
+   notes_popover.show(element);  
+};
+
+function editNotes()
+{
+   var dialog = document.getElementById('editNotes');
+   notes_popover.hide();      
+   
+   if (dialog) {   	  
+      dialog.show();
+      $(".edit_notes_fields").val( $(".notes_value").val() );
+   } else {
+      ons.createDialog('editNotes.html')
+      .then(function(dialog) {      	
+      	$(".edit_notes_fields").val( $(".notes_value").val() );
+        dialog.show();
+      });
+   }   
+}
+
+function deleteNotes()
+{
+	notes_popover.hide();
+	
+	ons.notification.confirm({
+	  message: getTrans("Are you sure?","are_you_sure") ,	  
+	  title: dialog_title_default ,		  
+	  buttonLabels: [ getTrans("Yes","yes") ,  getTrans("No","no") ],
+	  animation: 'default', // or 'none'
+	  primaryButtonIndex: 1,
+	  cancelable: true,
+	  callback: function(index) {	 	  	     	  
+	  	   if (index==0){	  	   	 
+				callAjax("deleteNotes","id=" + $(".notes_id").val() + "&task_id="+$(".task_id").val() );
+	  	   } else {
+	  	   	   return false;
+	  	   }
+	  }
+	});  	
+}
+
+function updateNotes()
+{
+	var params='';
+	params+="id="+$(".notes_id").val();
+	params+="&notes="+$(".edit_notes_fields").val() + "&task_id="+$(".task_id").val();
+	callAjax("updateNotes", params );
+}
+
+function addPhotoSelection()
+{
+	var dialog = document.getElementById('addphotoSelection');
+	if (dialog) {
+	      dialog.show();	      	      
+	} else {
+	    ons.createDialog('addphotoSelection.html')
+	      .then(function(dialog) {
+	        dialog.show();	        	        
+	        setTimeout('TransLatePage()', 300);	
+	    });
+	}	
+}
+
+function showCemara()
+{
+	
+	if (isDebug()){
+		toastMsg("show camera");			
+		var dialog = document.getElementById('addphotoSelection');
+	    dialog.hide();
+		return;
+	}
+	
+	navigator.camera.getPicture(uploadTaskPhoto, function(){
+		toastMsg( getTrans("Get photo failed","get_photo_failed") );
+	},{
+	    destinationType: Camera.DestinationType.FILE_URI,
+	    sourceType: Camera.PictureSourceType.CAMERA,
+	    popoverOptions: new CameraPopoverOptions(300, 300, 100, 100, Camera.PopoverArrowDirection.ARROW_ANY)
+    });
+}
+
+function uploadTaskPhoto(imageURI)
+{
+	
+     uploadLoader.show();
+	 
+	 setTimeout(function(){
+		$("#progress_bar").attr("value",0);
+		$(".bytes_send").html("0%");
+	 }, 1);	
+	 	 
+	 var options = new FileUploadOptions();
+	 options.fileKey = "file";
+	 options.fileName = imageURI.substr(imageURI.lastIndexOf('/') + 1);
+	 options.mimeType = "image/jpeg";
+	 	 
+	 
+	 var params = {};
+	 /*params.token = getStorage("kr_token") ;	 
+	 params.task_id = $(".task_id_details").val() ;	 */
+	 	 
+	params.lang_id=getStorage("kr_lang_id");
+	if(!empty(krms_driver_config.APIHasKey)){		
+		params.api_key=krms_driver_config.APIHasKey;
+	}		
+	if ( !empty( getStorage("kr_token") )){				
+		params.token=getStorage("kr_token");
+	}
+	
+	params.task_id=$(".task_id_global").val();
+	 
+	 options.params = params;
+ 
+	 options.chunkedMode = false;	
+	 
+	 var headers={'headerParam':'headerValue'};
+	 options.headers = headers;
+	
+	 var ft = new FileTransfer();	 	 	 
+	 
+	 ft.onprogress = function(progressEvent) {
+     if (progressEvent.lengthComputable) {
+     	    
+     	    var loaded_bytes= parseInt(progressEvent.loaded);
+     	    var total_bytes= parseInt(progressEvent.total);
+     	    
+     	    var loaded_percent = (loaded_bytes/total_bytes)*100;	        
+     	    loaded_percent=Math.ceil(loaded_percent);
+     	    	        
+	        $("#progress_bar").attr("value",loaded_percent);
+		    $(".bytes_send").html(loaded_percent+"%");
+	        
+	        if(loaded_bytes>=total_bytes){	        	        
+	        	uploadLoader.hide();
+	        	$("#progress_bar").attr("value",0);
+		        $(".bytes_send").html("0%");
+	        }
+     	    
+	        loadingStatus.setPercentage(progressEvent.loaded / progressEvent.total);	        
+	        
+	    } else {	    		    	
+	        loadingStatus.increment();	        
+	    }
+	 };
+	 	 
+	 ft.upload(imageURI, ajax_url+"/UploadTaskPhoto", function(result){
+	    //alert(JSON.stringify(result));
+	    /*alert(result.responseCode);
+	    alert(JSON.stringify(result.response));	*/
+
+	    if( $('#uploadLoader').is(':visible') ){
+			uploadLoader.hide();
+			$("#progress_bar").attr("value",0);
+		    $(".bytes_send").html("0%");
+		}    
+	    
+	    var response=explode("|",result.response);	    
+	    toastMsg(response[1]);		   
+	    if ( response[0]=="1" || response[0]==1){
+	    	var dialog = document.getElementById('addphotoSelection');
+	        dialog.hide();	    	                
+	        callAjax("TaskDetails",'task_id=' + $(".task_id_global").val() );
+	    }
+	    
+	 }, function(error){
+	 	 uploadLoader.hide();
+	     toastMsg( getTrans("An error has occurred: Code","error_occured") + " "+ error.code);
+	 }, options);
+}
+
+function showDeviceGallery(action_type)
+{		
+	
+	dump("action_type=>"+action_type);
+	/*where action type
+	1 = profile
+	2 = task add picture	
+	*/
+			
+	if(isDebug()){
+		uploadLoader.show();
+		$(".bytes_send").html("10%");		
+		setTimeout(function(){
+			uploadLoader.hide();
+			$("#progress_bar").attr("value",0);
+			$(".bytes_send").html("0%");
+			
+			var dialog = document.getElementById('addphotoSelection');
+	        dialog.hide();
+	    
+		 }, 3000);	
+		return;
+	}
+	
+	
+	switch (action_type)
+	{
+		case 1:
+		case "1":
+		
+		navigator.camera.getPicture(uploadPhoto, function(){
+			toastMsg( getTrans("Get photo failed","get_photo_failed") );
+		},{
+		    destinationType: Camera.DestinationType.FILE_URI,
+		    sourceType: Camera.PictureSourceType.PHOTOLIBRARY,
+		    popoverOptions: new CameraPopoverOptions(300, 300, 100, 100, Camera.PopoverArrowDirection.ARROW_ANY)
+	    });
+	    
+	    
+		break;
+		
+		case 2:
+		case "2":
+		
+		var dialog = document.getElementById('addphotoSelection');
+	    dialog.hide();
+	    	   
+	    navigator.camera.getPicture(uploadTaskPhoto, function(){
+			toastMsg( getTrans("Get photo failed","get_photo_failed") );
+		},{
+		    destinationType: Camera.DestinationType.FILE_URI,
+		    sourceType: Camera.PictureSourceType.PHOTOLIBRARY,
+		    popoverOptions: new CameraPopoverOptions(300, 300, 100, 100, Camera.PopoverArrowDirection.ARROW_ANY)
+	    });
+		
+		break;
+	}		
+}
+
+function showPhotoPage()
+{
+   showPage("photoPage.html",'');
+}
+
+function uploadPhoto(imageURI)
+{
+	 
+	 uploadLoader.show();
+	 
+	 setTimeout(function(){
+		$("#progress_bar").attr("value",0);
+		$(".bytes_send").html("5%");
+	 }, 1);	
+	 	 
+	 var options = new FileUploadOptions();
+	 options.fileKey = "file";
+	 options.fileName = imageURI.substr(imageURI.lastIndexOf('/') + 1);
+	 options.mimeType = "image/jpeg";
+	 	 
+	 var params = {};
+	 if ( !empty( getStorage("kr_token") )){				
+		params.token=getStorage("kr_token");
+	}	 
+	 options.params = params;
+ 
+	 options.chunkedMode = false;	
+	 
+	 var headers={'headerParam':'headerValue'};
+	 options.headers = headers;
+	
+	 var ft = new FileTransfer();	 	 	 
+	 
+	 ft.onprogress = function(progressEvent) {
+     if (progressEvent.lengthComputable) {
+     	    //toastMsg( "progressEvent=>"+progressEvent.loaded + " - " + progressEvent.total );
+     	    
+     	    var loaded_bytes= parseInt(progressEvent.loaded);
+     	    var total_bytes= parseInt(progressEvent.total);
+     	    
+     	    var loaded_percent = (loaded_bytes/total_bytes)*100;	        
+     	    loaded_percent=Math.ceil(loaded_percent);
+     	    
+	        
+	        $("#progress_bar").attr("value",loaded_percent);
+		    $(".bytes_send").html(loaded_percent+"%");
+	        
+	        if(loaded_bytes>=total_bytes){	        	        
+	        	uploadLoader.hide();
+	        	$("#progress_bar").attr("value",0);
+		        $(".bytes_send").html("0%");
+	        }
+     	    
+	        loadingStatus.setPercentage(progressEvent.loaded / progressEvent.total);	        
+	        
+	    } else {	    		    	
+	        loadingStatus.increment();	        
+	    }
+	 };
+	 	 
+	 ft.upload(imageURI, ajax_url+"/UploadProfile", function(result){
+	    //alert(JSON.stringify(result));
+	    /*alert(result.responseCode);
+	    alert(JSON.stringify(result.response));	*/
+	    	    
+	    
+	    var response=explode("|",result.response);
+	    //alert(response[0]);	
+	    toastMsg(response[1]);	
+	    
+	    if ( response[0]=="1" || response[0]==1){
+		    $(".profile-bg").css('background-image', 'url(' + response[2] + ')');
+			$(".profile-bg").css("background-size","cover");
+			$(".avatar").attr("src", response[2] );
+			
+			$("#img_loader_wrap").addClass("img_loader");
+			
+		    imageLoaded('.img_loader');
+	    }
+		
+		if( $('#uploadLoader').is(':visible') ){
+			uploadLoader.hide();
+			$("#progress_bar").attr("value",0);
+		    $(".bytes_send").html("0%");
+		}
+	    
+	 }, function(error){
+	 	 uploadLoader.hide();
+	     toastMsg( getTrans("An error has occurred: Code","error_occured") + " "+ error.code);
+	 }, options);
+}
+
+function view3DirectionMap(data)
+{
+
+	if(!isDebug()){
+	   loader.show();
+	}
+	
+	setStorage("map_action",'map2');
+	var data = JSON.parse(getStorage("task_full_data"));
+	if(!empty(data)){
+		
+		kNavigator.pushPage("Map.html", {
+		  animation: 'fade',
+		  callback: function(){		
+
+		  	  dump(data);		
+		  	  //alert(JSON.stringify(data));	 
+		  	  		  	  
+             if(!empty(data)){		  	  	  		  	  	  
+		  	  	  if ( data.status_raw=="cancelled" || data.status_raw=="successful" || data.status_raw=="failed"){	  	  	  
+		  	  	  	  $(".direction_wrap").hide();
+		  	  	  	  $(".floating_action").hide();
+		  	  	  }
+		  	  }
+		  	  
+		  	  setStorage("task_lat", data.task_lat );
+		  	  setStorage("task_lng", data.task_lng );
+		  	  
+		  	  //$(".direction_wrap").hide(); 		  	  
+		  	  /*var params='';
+		  	  params="driver_lat="+data.driver_lat;
+		  	  params+="&driver_lng="+data.driver_lng;
+		  	  params+="&dropoff_lat="+data.dropoff_lat;
+		  	  params+="&dropoff_lng="+data.dropoff_lng;		  	  
+		  	  params+="&task_lat="+data.task_lat;
+		  	  params+="&task_lng="+data.task_lng;		  	  
+		  	  callAjax("trackDistance",params);*/
+		  	  
+
+		  	  if (isDebug()){
+		        return;
+	          }
+		  	  
+		  	  var dropoff_location = new plugin.google.maps.LatLng( data.dropoff_task_lat , data.dropoff_task_lng );
+		  	  var task_location = new plugin.google.maps.LatLng( data.task_lat , data.task_lng );
+
+		  	  /*alert("dropoff "+data.dropoff_lat + " => "+ data.dropoff_lng );
+		  	  alert("task location "+data.task_lat + " => "+ data.task_lng );*/
+		  	  
+		  	  
+		  	  setTimeout(function(){ 	    
+		        var div = document.getElementById("map_canvas");
+		        $('#map_canvas').css('height', $(window).height() - $('#map_canvas').offset().top);
+		        
+		        map = plugin.google.maps.Map.getMap(div, {     
+			     'camera': {
+			      'latLng': dropoff_location,
+			      'zoom': 17
+			     }
+			    });
+			    
+			    map.clear();
+		        map.off();
+			    
+		        map.setBackgroundColor('white');		        
+		        map.on(plugin.google.maps.event.MAP_READY, function(){
+		        			        	 
+		        	 
+		        	 navigator.geolocation.getCurrentPosition( function(position) {	   
+		        	
+		        	    var driver_location = new plugin.google.maps.LatLng(position.coords.latitude , position.coords.longitude); 	
+		        	    
+		        	    //alert("driver_location "+position.coords.latitude + " => "+ position.coords.longitude );
+		        	    
+		        	    
+		        	    var task_data = JSON.parse(getStorage("task_full_data"));
+		        	    		        	    
+		        	    /*alert(task_data.map_icons.driver);
+		        	    alert(task_data.map_icons.merchant);
+		        	    alert(task_data.map_icons.customer);*/		        	    
+		        	    		        	    		        	    
+		        	    if (task_data.trans_type_raw=="pickup"){
+		        	    	
+		        	    	var data_marker = [      
+							{ 
+						        'title': getTrans("You are here","you_are_here"),
+						        'position': driver_location ,
+						        //'snippet': getTrans( "Driver name" ,'driver_name'),
+						        'icon': {
+							       'url': task_data.map_icons.driver
+							    }
+						      },{ 
+						        'title': data.drop_address , 							            
+						        'position': dropoff_location ,						        
+						        'snippet': getTrans( "Drop Details" ,'drop_details') ,
+						        'icon': {							       
+							       'url': task_data.map_icons.customer
+							    }
+						      },{ 
+						        'title': data.delivery_address , 
+						        'position': task_location ,
+						        'snippet': getTrans( "Pickup Details" ,'pickup_details') ,
+						        'icon': {
+							       'url': task_data.map_icons.merchant
+							    }
+						      }  
+						    ];
+		        	    	
+		        	    } else {
+		        	    		        	    
+			        	    var data_marker = [      
+							{ 
+						        'title': getTrans("You are here","you_are_here"),
+						        'position': driver_location ,
+						        //'snippet': getTrans( "Driver name" ,'driver_name'),
+						        'icon': {
+							       'url': task_data.map_icons.driver
+							    }
+						      },{ 
+						        'title': data.drop_address , 							            
+						        'position': dropoff_location ,
+						        'snippet': getTrans( "Pickup Details" ,'pickup_details') ,
+						        'icon': {
+							       'url': task_data.map_icons.merchant
+							    }
+						      },{ 
+						        'title': data.delivery_address , 
+						        'position': task_location ,
+						        'snippet': getTrans( "Delivery Address" ,'delivery_address'),
+						        'icon': {
+							       'url': task_data.map_icons.customer
+							    }
+						      }  
+						    ];
+					    
+		        	   }
+					    
+					    
+					   hideAllModal(); 
+					    
+					   map.setCenter(driver_location);             
+					   map.setZoom(17);
+
+
+					   if (task_data.trans_type_raw=="pickup"){
+					   						   	
+					   	  addMarkers(data_marker, function(markers) {
+						    
+						   	  	map.addPolyline({
+								points: [
+								  driver_location,
+								  task_location
+								],
+								'color' : '#AA00FF',
+								'width': 10,
+								'geodesic': true
+								}, function(polyline) {
+								   
+								   map.animateCamera({
+									  'target': task_location,
+									  'zoom': 17,
+									  'tilt': 30
+									}, function() {
+																		
+										map.addPolyline({
+										points: [
+										  task_location,
+										  dropoff_location
+										],
+										'color' : '#AA00FF',
+										'width': 10,
+										'geodesic': true
+										}, function(polyline) {
+										   
+											map.animateCamera({
+											  'target': dropoff_location,
+											  'zoom': 17,
+											  'tilt': 30
+											}, function() {
+												
+											}); /*end camera*/
+											 
+										}); /*end line*/  	
+												
+																   
+								   });  /*end camera*/
+									
+								}); /*end line*/  
+						   	
+						   }); /*end markers*/
+					   	
+					   } else {
+					   				    
+						   addMarkers(data_marker, function(markers) {
+						    
+						   	  	map.addPolyline({
+								points: [
+								  driver_location,
+								  dropoff_location
+								],
+								'color' : '#AA00FF',
+								'width': 10,
+								'geodesic': true
+								}, function(polyline) {
+								   
+								   map.animateCamera({
+									  'target': dropoff_location,
+									  'zoom': 17,
+									  'tilt': 30
+									}, function() {
+																		
+										map.addPolyline({
+										points: [
+										  dropoff_location,
+										  task_location
+										],
+										'color' : '#AA00FF',
+										'width': 10,
+										'geodesic': true
+										}, function(polyline) {
+										   
+											map.animateCamera({
+											  'target': task_location,
+											  'zoom': 17,
+											  'tilt': 30
+											}, function() {
+												
+											}); /*end camera*/
+											 
+										}); /*end line*/  	
+												
+																   
+								   });  /*end camera*/
+									
+								}); /*end line*/  
+						   	
+						   }); /*end markers*/
+					   
+					   } 
+					    				    
+		        	 	 	
+		        	 }, function(error){
+		        	 	 hideAllModal();	
+				    	 toastMsg( error.message );
+				    	 // end position error
+				      }, 
+			          { timeout: 10000, enableHighAccuracy : getLocationAccuracy() } 
+			        );	   	
+		        	
+		       }); 
+		        		        
+		    }, 300); // and timeout for clear transitions  	  	  
+		  	  	  	  
+		  } 
+	    });
+	
+	} else {
+		hideAllModal();	
+		onsenAlert( getTrans("Map not available",'map_not_available') );
+	}
+}
+
+function deletePhoto(id)
+{
+	ons.notification.confirm({
+	  title: dialog_title_default ,		  
+      message: getTrans("Delete this photos?","delete_this_photo") ,
+      callback: function(idx) {
+        switch (idx) {
+          case 0:            
+            break;
+          case 1:
+            callAjax("deletePhoto",'id=' + id + "&task_id=" + $(".task_id_global").val() );
+            break;
+        }
+      }
+    });
 }

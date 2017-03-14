@@ -256,6 +256,10 @@ function TaskAddSignature( data )
 		return '';
 	}
 	
+	if ( data.driver_enabled_signature!=1){
+		return '';
+	}
+	
 	dump( data.status_raw );
 	
 	var html='';
@@ -653,4 +657,292 @@ function formatNotifications(data)
 	   return html;
 	}
 	return '';	
+}
+
+function DriverNotes( notes, data)
+{	
+	if(empty(data)){
+		return '';
+	}
+	
+	if ( data.driver_enabled_notes!=1){
+		return '';
+	}
+	
+	var html='';
+	html+='<ons-list-item tappable onclick="showAddNote('+data.task_id+','+ "'" + data.status_raw + "'"  + ')"  >';
+     html+='<ons-col width="90%" >     ';            
+         html+='<div class="table">';
+             html+='<div class="col a">';
+             html+='<ons-icon icon="ion-compose" size="20px"></ons-icon>';
+             html+='</div>';
+             html+='<div class="col">';      
+             
+             if ( data.status_raw=="cancelled" || data.status_raw=="successful" || data.status_raw=="failed"){	  	  	  
+             	html+='<b>'+ getTrans("View Notes",'view_notes') +'</b>';               
+             	//if ( data.history_notes!=2){
+             	if ( data.history_notes.total>0){
+             	html+='<span style="margin-left:10px;" class="notification">'+data.history_notes.total+'</span>'; 
+             	}
+             } else {
+             	html+='<b>'+ getTrans("Add Notes",'add_notes') +'</b>';   
+             	if ( data.history_notes.total>0){
+             	html+='<span style="margin-left:10px;" class="notification">'+data.history_notes.total+'</span>'; 
+             	}
+             }                    
+             
+             html+='</div>';
+          html+='</div> ';
+    html+='</ons-col>';
+
+    html+='<ons-col width="10%">';
+	    html+='<ons-icon icon="ion-ios-arrow-right" size="20px"></ons-icon>';
+	html+='</ons-col> 	        ';
+   html+='</ons-list-item>';
+      
+   switch(data.status_raw)
+   {
+   	  case "assigned":   	  
+   	    return "";
+   	  break;
+   	  
+   	  default:
+   	    return html;
+   	  break;
+   }
+}
+
+function addPhotoChevron(data)
+{
+	dump('addPhotoChevron');
+	
+	if(empty(data)){
+		return '';
+	}
+	
+	if ( data.driver_enabled_photo!=1){
+		return '';
+	}
+	
+	var html='';
+	
+	if ( data.status_raw=="cancelled" || data.status_raw=="successful" || data.status_raw=="failed"){	
+	} else {
+		html+='<ons-list-item tappable onclick="javascript:addPhotoSelection();" >';
+	     html+='<ons-col width="90%" >     ';            
+	         html+='<div class="table">';
+	             html+='<div class="col a">';
+	             html+='<ons-icon icon="ion-image" size="20px"></ons-icon>';
+	             html+='</div>';
+	             html+='<div class="col">';      
+	             
+	             html+='<b>'+ getTrans("Add Photo",'add_photo') +'</b>'; 	             
+	             
+	             html+='</div>';
+	          html+='</div> ';
+	    html+='</ons-col>';
+	
+	    html+='<ons-col width="10%">';        
+		    html+='<ons-icon icon="ion-ios-arrow-right" size="20px"></ons-icon>';
+		html+='</ons-col> 	        ';
+	   html+='</ons-list-item>';
+   }
+   
+   //if (data.task_photo!=2){
+   if (data.task_photo.total>0){
+   	   html+='<ons-list-item tappable onclick="javascript:showPhotoPage();" >';
+	     html+='<ons-col width="90%" >     ';            
+	         html+='<div class="table">';
+	             html+='<div class="col a">';
+	             html+='<ons-icon icon="ion-images" size="20px"></ons-icon>';
+	             html+='</div>';
+	             html+='<div class="col">';      
+	             
+	             html+='<b>'+ getTrans("View Photo",'view_photo') +'</b>';  
+	             html+='<span style="margin-left:10px;" class="notification">'+data.task_photo.total+'</span>';
+	             
+	             html+='</div>';
+	          html+='</div> ';
+	    html+='</ons-col>';
+	
+	    html+='<ons-col width="10%">';   	         
+		     html+='<ons-icon icon="ion-ios-arrow-right" size="20px"></ons-icon>';
+		html+='</ons-col> 	        ';
+	   html+='</ons-list-item>';
+   }
+      
+   switch(data.status_raw)
+   {
+   	  case "unassigned":
+   	  case "assigned":
+   	    return "";
+   	  break;
+   	   
+   	  default:
+   	    return html;
+   	  break;
+   }
+}
+
+function DroffDetails(data)
+{
+	
+	if (empty(data.drop_address)){
+		return '';
+	}
+	
+	setStorage("task_full_data",JSON.stringify(data));
+	
+	var html='';
+	
+		html+='<ons-list-item>';
+	     html+='<ons-row>';
+	        html+='<ons-col style="text-align:left;">';
+	        
+	        if ( data.trans_type_raw=="delivery"){	        
+	           html+='<b>'+ getTrans('Pickup Details','pickup_details') +'</b>';
+	        } else {
+	           html+='<b>'+ getTrans('Drop Details','drop_details') +'</b>';
+	        }
+	        
+	        html+='</ons-col>';  
+	      html+='</ons-row>';           
+	    html+='</ons-list-item>';   
+	    
+	    html+='<ons-list-item>';
+	     html+='<ons-row>';
+	        html+='<ons-col width="70%" >';
+	        	         
+	         if (!empty(data.dropoff_contact_name)){
+	          html+='<div class="table">';
+	             html+='<div class="col a">';
+	             html+='<ons-icon icon="ion-android-contact" size="20px"></ons-icon>';
+	             html+='</div>';
+	             html+='<div class="col">';
+	             html+='<p>'+ data.dropoff_contact_name +'</p>';
+	             html+='</div>';
+	          html+='</div>';   
+	         }
+	          
+	         if (!empty(data.dropoff_contact_number)){
+	         html+='<div class="table">';
+	             html+='<div class="col a">';
+	             html+='<ons-icon icon="ion-ios-telephone" size="20px"></ons-icon>';
+	             html+='</div>';
+	             html+='<div class="col">';
+	             html+='<p><a class="tel" href="tel:'+data.dropoff_contact_number+'">'+data.dropoff_contact_number+'</a></p>';
+	             html+='</div>';
+	         html+='</div>';     
+	         }
+	        
+	        
+	        html+='</ons-col>';
+	       html+='</ons-row>';
+	   html+='</ons-list-item>';    
+	    
+		
+	   //setStorage("task_full_data",JSON.stringify(data));
+	   
+		html+='<ons-list-item tappable onclick="view3DirectionMap()"  >';
+	     html+='<ons-col width="90%" >     ';            
+	         html+='<div class="table">';
+	             html+='<div class="col a">';
+	             html+='<ons-icon icon="ion-location" size="20px"></ons-icon>';
+	             html+='</div>';
+	             html+='<div class="col">';
+	                          
+	             html+='<p>'+data.drop_address+'</p>';
+	             
+	             html+='</div>';
+	          html+='</div> ';
+	    html+='</ons-col>';
+
+    html+='<ons-col width="10%">';
+	    html+='<ons-icon icon="ion-ios-arrow-right" size="20px"></ons-icon>';
+	html+='</ons-col> 	        ';
+   html+='</ons-list-item>';
+   
+   return html;
+}
+
+function fillNotes(data)
+{
+	if(empty(data)){
+		return '';
+	}
+	
+	var html='';
+	html+='<ons-list modifier="knotes">';
+	$.each( data.details, function( key, val ) {     
+		  dump(val);
+		  
+		  html+='<ons-list-item>';
+
+			 html+='<ons-row>';
+			   html+='<ons-col width="85%">';
+				 html+= val.notes;
+				 
+				 html+='<div class="top10"></div>';
+				 html+='<div class="table  equal-col">';
+				   html+='<div class="col col-1">'+val.date_created+'</div>';
+				 html+='</div>';
+				 
+			   html+='</ons-col>';
+			   html+='<ons-col class="popnotes_col">';
+				  html+='<ons-button modifier="quiet" onclick="showNotesPopover(this,'+val.id+','+ "'" + val.notes + "'" +' )">';
+					html+='<ons-icon icon="ion-android-more-vertical" style="color:grey;" size="20px"></ons-icon>';
+				  html+='</ons-button>';
+			   html+='</ons-col>';
+			 html+='</ons-row>';
+		  
+		html+='</ons-list-item>';
+
+	});
+	html+='</ons-list>'; 
+	
+	$("#list-notes").html(html);
+		
+	if ( data.msg=="cancelled" || data.msg=="successful" || data.msg=="failed"){
+		$(".popnotes_col").hide();
+	}
+	
+}
+
+function gridPhoto(data , status_raw)
+{
+   dump(status_raw);
+   var html='';   
+   
+   if (data.details.length>0){   	  
+      $.each( data.details, function( key, val ) {       	        	  
+      	           	     
+      	     html+='<ons-row>';
+      	     
+      	     if ( status_raw=="cancelled" || status_raw=="successful" ||status_raw=="failed"){	
+      	     	html+='<ons-col height="200" style="background:url('+val.photo_url+') no-repeat center center; background-size:cover;"   >';      	  
+      	     } else {
+      	      html+='<ons-col height="200" style="background:url('+val.photo_url+') no-repeat center center; background-size:cover;"  onclick="deletePhoto('+val.id+')" >';      	  
+      	     }
+      	            	      
+      	          html+='<div class="img_loader" id="img_loader_wrap">';
+      	                  
+			        html+='<div class="spinner">';
+					  html+='<div class="double-bounce1"></div>';
+					  html+='<div class="double-bounce2"></div>';
+					html+='</div>';
+			      
+			         html+='<img class="grid_photos" src="'+ val.photo_url +'"/>';
+			      html+='</div>';
+      	      
+			      			  
+      	      html+='</ons-col>';      	        	            	     
+      	      
+      	     html+='</ons-row>';      	    
+      	        
+      });            
+      $("#list-photos").html(html);    
+      imageLoaded('.img_loader'); 
+   } else {
+   	 dump('no photo');   	 
+   }
 }
