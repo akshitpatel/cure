@@ -52,7 +52,7 @@
     
 
    <ons-modal id="loader">
-     <div class="myloader"></div>
+     <ons-progress-circular indeterminate></ons-progress-circular>
    </ons-modal>
 
      <ons-navigator id="kNavigator" page="pageGetSettings.html"></ons-navigator>            
@@ -327,6 +327,8 @@
          <div class="center toolbar-title"></div>
        </ons-toolbar>
        
+       <input type="hidden" name="task_id_global" class="task_id_global">
+       
        <div id="task-details" class="inner normal-inner list-wrapper">
        
        </div>   
@@ -389,12 +391,21 @@
          <div id="signature-pan"></div>
          
          <input type="hidden" name="task_id_signature" class="task_id_signature">
+         <input type="hidden" name="signature_id" class="signature_id">
          
+         
+         <p class="field-wrap" style="margin-top:20px;">
+           <ons-input type="text" name="receive_by"  class="receive_by"           
+           modifier="underbar" placeholder="Receive By" data-trn-key="receive_by" float></ons-input>
+          </p>
+         
+          
          <p class="signature-action">
            <ons-button modifier="large yellow-button" onclick="AddSignatureToTask()" >
             <span class="trn" data-trn-key="done" >Done</span>
            </ons-button>          
          </p>
+                  
          <p class="signature-action">
          <ons-button modifier="quiet" onclick="resetSignature();">
            <span class="trn" data-trn-key="reset" >Reset</span>
@@ -448,7 +459,23 @@
     <ons-template id="profile.html"> 
     <ons-page id="profile" >
     
-    <div class="profile-bg"></div>
+    <div class="profile-bg">
+    
+       <div class="img_loader" id="img_loader_wrap">
+      
+        <div class="spinner">
+		  <div class="double-bounce1"></div>
+		  <div class="double-bounce2"></div>
+		</div>
+      
+         <img class="avatar" src=""/>
+      </div>
+    
+    </div>
+    
+     <ons-fab position="top right" onclick="showDeviceGallery(1);">
+       <ons-icon icon="ion-image"></ons-icon>
+     </ons-fab>
     
       <div class="inner">
       
@@ -621,7 +648,15 @@
        <div class="list-wrapper">
          <ons-list>
          
-            <ons-list-header class="top10 trn" data-trn-key="device_id" >Device ID</ons-list-header>            
+         
+           <ons-list-header class="top10 trn" data-trn-key="software_version" >Software version</ons-list-header>            
+            <ons-list-item modifier="settings-list" >		      
+		      <ons-row>
+		         <ons-col><span class="software_version concat-text"></span></ons-col>
+		      </ons-row>
+		    </ons-list-item>
+            
+            <ons-list-header class="trn" data-trn-key="device_id" >Device ID</ons-list-header>            
             <ons-list-item modifier="settings-list" >		      
 		      <ons-row>
 		         <ons-col><span class="device_id concat-text"></span></ons-col>
@@ -722,17 +757,9 @@
         <div id="map_canvas">
         
         <div class="list-wrapper" id="direction-wrap">
-         <ons-list>
-           <ons-list-item  modifier="task-list"  >
-                       
-            <ons-row>
-            <ons-button modifier="large yellow-button" onclick="viewTaskDirection()" >
+             <ons-button modifier="large yellow-button" onclick="viewTaskDirection()" >
               <span class="trn" data-trn-key="view_direction">View Direction</span>
              </ons-button>          
-            </ons-row>
-           
-           </ons-list-item>
-         </ons-list>
         </div>
          
        </div>    
@@ -741,6 +768,133 @@
     </ons-page>   
     </ons-template> 
      
+    
+   <ons-template id="Notes.html"> 
+    <ons-page id="Notes" modifier="grey-page"  >
+		
+       <ons-toolbar modifier="ktransparent-toolbar">        
+         <div class="left"><ons-back-button></ons-back-button></div>          
+         <div class="center toolbar-title-notes trn" data-trn-key="add_notes" >
+         Add Notes
+         </div>
+       </ons-toolbar>
+
+              
+       <div class="list-wrapper" id="list-notes" >       
+       </div>
+              
+       <ons-bottom-toolbar class="button-toolbar-action2 add_notes_wrapper"> 
+       <div class="addnotes-wrapper">
+       <form id="frm-notes" class="frm-notes" method="post" onSubmit="return false;">
+       <input type="hidden" name="task_id" class="task_id">
+       <ons-row>      
+          <ons-col width="85%">
+             <ons-input type="text" name="notes" class="notes_fields" modifier="material" float></ons-input>
+          </ons-col>
+          <ons-col>
+              <ons-button modifier="quiet" onclick="addNotes();">
+                 <ons-icon icon="ion-android-send" style="color:grey;" size="20px"></ons-icon>
+              </ons-button>
+          </ons-col>
+       </ons-row>        
+                
+       
+       </form>
+       </div>
+       </ons-bottom-toolbar>
+                    
+	  </ons-page>
+    </ons-template>    
+
+    
+   <ons-popover direction="down" id="notes_popover" cancelable>	 
+    <input type="hidden" name="notes_id" class="notes_id"> 
+    <input type="hidden" name="notes_value" class="notes_value"> 
+      <ons-list>	    
+      
+	    <ons-list-item modifier="normal-menu" tappable onclick="editNotes()" >
+	    <span class="trn" data-trn-key="edit" >Edit</span>
+	    </ons-list-item>
+	    	    
+	    <ons-list-item modifier="normal-menu" tappable onclick="deleteNotes()">
+	    <span class="trn" data-trn-key="delete">Delete</span>
+	    </ons-list-item>
+	    
+	  </ons-list>	  
+    </ons-popover>
+    
+    
+    <ons-template id="editNotes.html">
+      <ons-dialog id="editNotes" cancelable > 
+
+        <form id="frm-editnotes"  method="post" onSubmit="return false;"> 
+        <div class="inner">
+        
+           <p class="field-wrap">
+             <ons-input type="text" name="edit_notes_fields" class="edit_notes_fields"            
+              modifier="underbar" float></ons-input>
+           </p>
+           
+           <p class="text-left"">
+           <ons-button modifier="large" onclick="updateNotes()" >
+           <span class="trn" data-trn-key="submit">Submit</span>
+           </ons-button>          
+           </p>       
+           
+        </div>
+        </form>
+             
+      </ons-dialog>
+    </ons-template>       
+
+    <ons-modal id="uploadLoader" modifier="uploader">
+        <div class="inner">
+        <p class="bytes_send"></p>
+        <ons-progress-circular indeterminate></ons-progress-circular>
+        </div>
+    </ons-modal>
+    
+    <ons-template id="addphotoSelection.html">
+      <ons-dialog id="addphotoSelection" cancelable > 
+              
+      <ons-list>	    
+      
+	    <ons-list-item modifier="normal-menu" tappable onclick="showCemara();" >
+	    <ons-icon icon="ion-ios-camera" size="25px"></ons-icon>
+	    <span style="margin-left:10px;"  class="trn" data-trn-key="take_picture" >Take Picture</span>
+	    </ons-list-item>
+	    
+	    <ons-list-item modifier="normal-menu" onclick="showDeviceGallery(2);"  tappable>
+	    <ons-icon icon="ion-image" size="20px"></ons-icon>
+	    <span style="margin-left:10px;" class="trn" data-trn-key="upload_picture">Upload Picture</span>
+	    </ons-list-item>
+	    	    
+	  </ons-list>	  
+	        
+      </ons-dialog>
+    </ons-template>                   
+    
+    
+     <ons-template id="photoPage.html"> 
+    <ons-page id="photoPage" modifier="grey-page"  >
+		
+       <ons-toolbar modifier="ktransparent-toolbar">        
+         <div class="left"><ons-back-button></ons-back-button></div>          
+         <div class="center toolbar-title-notes trn" data-trn-key="photos" >
+         Photos
+         </div>
+       </ons-toolbar>
+
+              
+       <div class="list-photos" id="list-photos" >       
+       </div>
+                   
+       </div>
+       </ons-bottom-toolbar>
+                    
+	  </ons-page>
+    </ons-template>        
+    
     
   </body>
 </html>

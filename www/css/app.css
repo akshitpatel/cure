@@ -474,7 +474,7 @@ height:auto;
 
 /*loader background remove dim color*/
 .modal{
-background:none;
+/*background:none;*/
 }
 .top10{
 margin-top:10px;
@@ -657,4 +657,87 @@ background-color:#38323a;
 margin-left: 15px;
 position: absolute;
 top: 25%;
+}
+.notes_fields{
+ width: 100%;
+}
+
+.img_loader img.avatar{
+max-width:50px;
+max-height:50px;
+}
+img.avatar{
+display:none;
+}
+
+.profile-bg .img_loader{
+left: 46%;
+position: absolute;
+top: -5%;
+}
+
+
+/*SPINER*/
+.img_loader .spinner{
+display:block;
+}
+.spinner { 
+  display:none;
+  width: 40px;
+  height: 40px;
+
+  position: relative;
+  margin: 100px auto;
+}
+
+.double-bounce1, .double-bounce2 {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background-color: #009688;
+  opacity: 0.6;
+  position: absolute;
+  top: 0;
+  left: 0;
+  
+  -webkit-animation: sk-bounce 2.0s infinite ease-in-out;
+  animation: sk-bounce 2.0s infinite ease-in-out;
+}
+
+.double-bounce2 {
+  -webkit-animation-delay: -1.0s;
+  animation-delay: -1.0s;
+}
+
+@-webkit-keyframes sk-bounce {
+  0%, 100% { -webkit-transform: scale(0.0) }
+  50% { -webkit-transform: scale(1.0) }
+}
+
+@keyframes sk-bounce {
+  0%, 100% { 
+    transform: scale(0.0);
+    -webkit-transform: scale(0.0);
+  } 50% { 
+    transform: scale(1.0);
+    -webkit-transform: scale(1.0);
+  }
+}
+
+.list-photos #img_loader_wrap{
+min-height:200px;
+max-height:200px;
+}
+
+.list-photos #img_loader_wrap img{
+display:none;
+}
+
+.list-photos #img_loader_wrap.img_loader img{
+display:block;
+min-height:1px;
+max-height:1px;
+}
+.profile-bg .is-broken{
+background:none;
 }
